@@ -1,10 +1,25 @@
 // File: app/cart/page.tsx
 
+import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import CartItem from "@/app/components/CartItem";
 import { getCart } from "@/lib/cart";
 
-export default async function CartPage() {
+export default function CartPage() {
+  return (
+    <main className="max-w-7xl mx-auto px-4 py-8">
+      <Suspense fallback={<CartLoading />}>
+        <CartContent />
+      </Suspense>
+    </main>
+  );
+}
+
+async function CartContent() {
+  // Wait for a real request before accessing cookies/auth
+  await connection();
+
   const {
     cartItems,
     totalItems,
@@ -14,16 +29,13 @@ export default async function CartPage() {
   } = await getCart();
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
-
+    <>
       <h1 className="text-3xl font-bold mb-8">
         Shopping Cart
       </h1>
 
       {cartItems.length === 0 ? (
-
         <div className="border rounded-xl p-12 text-center bg-white">
-
           <h2 className="text-2xl font-semibold">
             Your cart is empty
           </h2>
@@ -38,21 +50,14 @@ export default async function CartPage() {
           >
             Continue Shopping
           </Link>
-
         </div>
-
       ) : (
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* ===========================
-              Cart Items
-          =========================== */}
+          {/* Cart Items */}
 
           <div className="lg:col-span-2 space-y-6">
-
             {cartItems.map((item) => {
-
               const product = Array.isArray(item.products)
                 ? item.products[0]
                 : item.products;
@@ -68,15 +73,11 @@ export default async function CartPage() {
                 />
               );
             })}
-
           </div>
 
-          {/* ===========================
-              Order Summary
-          =========================== */}
+          {/* Order Summary */}
 
-          <div className="h-fit rounded-xl border bg-white p-6 shadow-sm sticky top-6">
-
+          <div className="sticky top-6 h-fit rounded-xl border bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold mb-6">
               Order Summary
             </h2>
@@ -85,49 +86,38 @@ export default async function CartPage() {
 
               <div className="flex justify-between">
                 <span>Total Items</span>
-                <span className="font-medium">
-                  {totalItems}
-                </span>
+                <span>{totalItems}</span>
               </div>
 
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="font-medium">
-                  ${subtotal.toFixed(2)}
-                </span>
+                <span>${subtotal.toFixed(2)}</span>
               </div>
 
               <div className="flex justify-between">
                 <span>Shipping</span>
-                <span className="font-medium">
-                  ${shipping.toFixed(2)}
-                </span>
+                <span>${shipping.toFixed(2)}</span>
               </div>
 
               <hr />
 
               <div className="flex justify-between text-xl font-bold">
-
                 <span>Total</span>
-
-                <span>
-                  ${total.toFixed(2)}
-                </span>
-
+                <span>${total.toFixed(2)}</span>
               </div>
 
             </div>
 
             <Link
               href="/checkout"
-              className="mt-8 block w-full rounded-lg bg-black py-4 text-center text-lg font-semibold text-white transition hover:bg-gray-800"
+              className="mt-8 block w-full rounded-lg bg-black py-4 text-center text-lg font-semibold text-white hover:bg-gray-800 transition"
             >
               Proceed to Checkout
             </Link>
 
             <Link
               href="/products"
-              className="mt-3 block w-full rounded-lg border py-4 text-center font-medium hover:bg-gray-100 transition"
+              className="mt-3 block w-full rounded-lg border py-4 text-center hover:bg-gray-100 transition"
             >
               Continue Shopping
             </Link>
@@ -135,9 +125,23 @@ export default async function CartPage() {
           </div>
 
         </div>
-
       )}
+    </>
+  );
+}
 
-    </main>
+function CartLoading() {
+  return (
+    <>
+      <h1 className="text-3xl font-bold mb-8">
+        Shopping Cart
+      </h1>
+
+      <div className="rounded-xl border bg-white p-12 text-center">
+        <p className="text-gray-500">
+          Loading your cart...
+        </p>
+      </div>
+    </>
   );
 }

@@ -1,11 +1,10 @@
-import { getRedxAreas } from "../actions/redx";
+import { Suspense } from "react";
+import RedxContent from "./RedxContent";
 
-export default async function RedxTestPage() {
-  const areas = await getRedxAreas();
-
+export default function RedxTestPage() {
   return (
-    <pre>
-      {JSON.stringify(areas, null, 2)}
-    </pre>
+    <Suspense fallback={<p>Loading RedX areas...</p>}>
+      <RedxContent />
+    </Suspense>
   );
 }
