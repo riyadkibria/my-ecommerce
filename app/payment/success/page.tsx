@@ -1,7 +1,11 @@
+import { connection } from "next/server";
 import SuccessContent from "./SuccessContent";
 
 
-export default function PaymentSuccessPage() {
+export default async function PaymentSuccessPage(){
+
+  await connection();
+
 
   return (
     <SuccessContent />
