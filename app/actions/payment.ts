@@ -1,45 +1,47 @@
-// app/actions/payment.ts
+// File: app/actions/payment.ts
 
 "use server";
 
-
 type PaymentData = {
-
   orderId: string;
 
   amount: number;
 
   customer: {
-
     name: string;
-
     email: string;
-
     phone: string;
-
     address: string;
-
   };
-
 };
-
 
 
 export async function startPayment(
   paymentData: PaymentData
-){
+) {
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
 
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "https://my-ecommerce-lyart-xi.vercel.app/";
+  if (!baseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL is missing"
+    );
+  }
 
 
+  const storeId =
+    process.env.SSLCOMMERZ_STORE_ID;
 
-  if(
-    !process.env.SSLCOMMERZ_STORE_ID ||
-    !process.env.SSLCOMMERZ_STORE_PASSWORD
-  ){
+
+  const storePassword =
+    process.env.SSLCOMMERZ_STORE_PASSWORD;
+
+
+  if (
+    !storeId ||
+    !storePassword
+  ) {
 
     throw new Error(
       "SSLCommerz credentials missing"
@@ -55,118 +57,110 @@ export async function startPayment(
 
     {
 
-      method:"POST",
+      method: "POST",
 
 
-      headers:{
+      headers: {
 
         "Content-Type":
-        "application/x-www-form-urlencoded"
+          "application/x-www-form-urlencoded"
 
       },
 
 
-      body:new URLSearchParams({
-
-
+      body: new URLSearchParams({
 
         // SSLCommerz credentials
 
         store_id:
-        process.env.SSLCOMMERZ_STORE_ID,
+          storeId,
 
 
         store_passwd:
-        process.env.SSLCOMMERZ_STORE_PASSWORD,
+          storePassword,
 
 
 
-
-        // Order information
+        // Transaction information
 
         total_amount:
-        paymentData.amount.toString(),
+          paymentData.amount.toString(),
 
 
         currency:
-        "BDT",
+          "BDT",
 
 
         tran_id:
-        paymentData.orderId,
+          paymentData.orderId,
 
 
 
-
-        // SSLCommerz server callback
+        // Server callback
 
         ipn_url:
-        `${baseUrl}/api/payment/callback`,
-
+          `${baseUrl}/api/payment/callback`,
 
 
 
         // Customer redirect
 
         success_url:
-        `${baseUrl}/payment/success`,
+          `${baseUrl}/payment/success`,
 
 
         fail_url:
-        `${baseUrl}/payment/fail`,
+          `${baseUrl}/payment/fail`,
 
 
         cancel_url:
-        `${baseUrl}/payment/cancel`,
-
+          `${baseUrl}/payment/cancel`,
 
 
 
         // Customer information
 
         cus_name:
-        paymentData.customer.name,
+          paymentData.customer.name,
 
 
         cus_email:
-        paymentData.customer.email,
+          paymentData.customer.email,
 
 
         cus_phone:
-        paymentData.customer.phone,
+          paymentData.customer.phone,
 
 
         cus_add1:
-        paymentData.customer.address,
+          paymentData.customer.address,
 
 
         cus_city:
-        "Dhaka",
+          "Dhaka",
 
 
         cus_country:
-        "Bangladesh",
-
+          "Bangladesh",
 
 
 
         // Product information
 
         shipping_method:
-        "NO",
+          "NO",
 
 
         product_name:
-        "Ecommerce Product",
+          "Ecommerce Product",
 
 
         product_category:
-        "General",
+          "General",
 
 
         product_profile:
-        "general"
-
+          "general"
 
       })
 
@@ -177,7 +171,7 @@ export async function startPayment(
 
 
   const data =
-  await response.json();
+    await response.json();
 
 
 
@@ -188,9 +182,9 @@ export async function startPayment(
 
 
 
-  if(
+  if (
     data.status !== "SUCCESS"
-  ){
+  ) {
 
     throw new Error(
       JSON.stringify(data)
