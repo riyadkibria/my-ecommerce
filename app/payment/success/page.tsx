@@ -1,14 +1,23 @@
-import { connection } from "next/server";
+import { Suspense } from "react";
 import SuccessContent from "./SuccessContent";
 
 
-export default async function PaymentSuccessPage(){
-
-  await connection();
-
+export default function PaymentSuccessPage(){
 
   return (
-    <SuccessContent />
+
+    <Suspense
+      fallback={
+        <p className="p-10">
+          Loading...
+        </p>
+      }
+    >
+
+      <SuccessContent />
+
+    </Suspense>
+
   );
 
 }
