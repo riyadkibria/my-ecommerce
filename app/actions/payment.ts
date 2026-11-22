@@ -32,7 +32,7 @@ export async function startPayment(
 
   const baseUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
-    "http://localhost:3000";
+    "https://my-ecommerce-lyart-xi.vercel.app/";
 
 
 
