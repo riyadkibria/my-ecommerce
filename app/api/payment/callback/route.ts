@@ -1,41 +1,31 @@
+// File: app/api/payment/callback/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { validatePayment } from "@/lib/sslcommerz";
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL!;
+
 export async function POST(
   request: NextRequest
 ) {
-  console.log(
-    "=============================="
-  );
-  console.log(
-    "SSLCommerz Callback Started"
-  );
-  console.log(
-    "=============================="
-  );
+  console.log("================================");
+  console.log("SSLCommerz Callback Started");
+  console.log("================================");
 
   try {
-    const formData =
-      await request.formData();
+    const formData = await request.formData();
 
-    const orderId =
-      formData.get("tran_id") as string;
-
-    const validationId =
-      formData.get("val_id") as string;
-
-    const status =
-      formData.get("status") as string;
+    const orderId = formData.get("tran_id") as string;
+    const validationId = formData.get("val_id") as string;
+    const status = formData.get("status") as string;
 
     console.log("Order ID:", orderId);
     console.log("Validation ID:", validationId);
     console.log("Status:", status);
 
     if (!orderId || !validationId) {
-      console.log(
-        "Missing payment information."
-      );
+      console.log("Missing payment information.");
 
       return NextResponse.json(
         {
@@ -50,34 +40,25 @@ export async function POST(
     // Validate Payment
     // =====================================
 
-    console.log(
-      "Validating payment..."
-    );
+    console.log("Validating payment...");
 
-    const validation =
-      await validatePayment(
-        validationId
-      );
+    const validation = await validatePayment(
+      validationId
+    );
 
     console.log(
       "Validation Response:",
       validation
     );
 
-    if (
-      validation.status !== "VALID"
-    ) {
+    if (validation.status !== "VALID") {
       console.log(
         "Payment validation failed."
       );
 
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Payment validation failed.",
-        },
-        { status: 400 }
+      return NextResponse.redirect(
+        `${BASE_URL}/payment/fail`,
+        303
       );
     }
 
@@ -85,12 +66,9 @@ export async function POST(
     // Supabase
     // =====================================
 
-    const supabase =
-      await createClient();
+    const supabase = await createClient();
 
-    console.log(
-      "Fetching order..."
-    );
+    console.log("Fetching order...");
 
     const {
       data: order,
@@ -98,53 +76,29 @@ export async function POST(
     } = await supabase
       .from("orders")
       .select("*")
-      .eq(
-        "id",
-        Number(orderId)
-      )
+      .eq("id", Number(orderId))
       .single();
 
-    console.log(
-      "Order:",
-      order
-    );
+    console.log("Order:", order);
+    console.log("Order Error:", orderError);
 
-    console.log(
-      "Order Error:",
-      orderError
-    );
-
-    if (
-      orderError ||
-      !order
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Order not found.",
-        },
-        { status: 404 }
+    if (orderError || !order) {
+      return NextResponse.redirect(
+        `${BASE_URL}/payment/fail`,
+        303
       );
     }
 
     // =====================================
-    // Already Paid?
+    // Already Paid
     // =====================================
 
-    if (
-      order.payment_status ===
-      "paid"
-    ) {
-      console.log(
-        "Order already paid."
-      );
+    if (order.payment_status === "paid") {
+      console.log("Order already paid.");
 
       return NextResponse.redirect(
-        new URL(
-          "/payment/success",
-          request.url
-        )
+        `${BASE_URL}/payment/success`,
+        303
       );
     }
 
@@ -152,11 +106,7 @@ export async function POST(
     // Amount Check
     // =====================================
 
-    console.log(
-      "Order Total:",
-      order.total
-    );
-
+    console.log("Order Total:", order.total);
     console.log(
       "SSL Amount:",
       validation.amount
@@ -166,17 +116,11 @@ export async function POST(
       Number(validation.amount) !==
       Number(order.total)
     ) {
-      console.log(
-        "Amount mismatch!"
-      );
+      console.log("Amount mismatch!");
 
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Amount mismatch.",
-        },
-        { status: 400 }
+      return NextResponse.redirect(
+        `${BASE_URL}/payment/fail`,
+        303
       );
     }
 
@@ -184,39 +128,22 @@ export async function POST(
     // Update Order
     // =====================================
 
-    console.log(
-      "Updating order..."
-    );
+    console.log("Updating order...");
 
-    const {
-      error: updateError,
-    } = await supabase
-      .from("orders")
-      .update({
-
-        payment_status:
-          "paid",
-
-        status:
-          "confirmed",
-
-        transaction_id:
-          validationId,
-
-        sslcommerz_tran_id:
-          validationId,
-
-        payment_gateway:
-          "sslcommerz",
-
-        paid_at:
-          new Date(),
-
-      })
-      .eq(
-        "id",
-        order.id
-      );
+    const { error: updateError } =
+      await supabase
+        .from("orders")
+        .update({
+          payment_status: "paid",
+          status: "confirmed",
+          transaction_id: validationId,
+          sslcommerz_tran_id:
+            validationId,
+          payment_gateway:
+            "sslcommerz",
+          paid_at: new Date(),
+        })
+        .eq("id", order.id);
 
     console.log(
       "Update Error:",
@@ -224,13 +151,9 @@ export async function POST(
     );
 
     if (updateError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Failed to update order.",
-        },
-        { status: 500 }
+      return NextResponse.redirect(
+        `${BASE_URL}/payment/fail`,
+        303
       );
     }
 
@@ -238,24 +161,16 @@ export async function POST(
     // Delete Cart
     // =====================================
 
-    console.log(
-      "Deleting cart..."
-    );
+    console.log("Deleting cart...");
 
-    console.log(
-      "User ID:",
-      order.user_id
-    );
-
-    const {
-      error: cartError,
-    } = await supabase
-      .from("cart_items")
-      .delete()
-      .eq(
-        "user_id",
-        order.user_id
-      );
+    const { error: cartError } =
+      await supabase
+        .from("cart_items")
+        .delete()
+        .eq(
+          "user_id",
+          order.user_id
+        );
 
     console.log(
       "Cart Delete Error:",
@@ -263,46 +178,37 @@ export async function POST(
     );
 
     if (cartError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Failed to clear cart.",
-        },
-        { status: 500 }
+      console.log(
+        "Cart delete failed, but payment is successful."
       );
     }
 
     console.log(
-      "Cart deleted successfully."
+      "Payment completed successfully."
     );
 
-    console.log(
-      "Redirecting..."
-    );
+    // =====================================
+    // IMPORTANT
+    // =====================================
+    // 303 forces browser to perform a GET
+    // request to /payment/success instead
+    // of trying to continue the POST request.
+    // =====================================
 
     return NextResponse.redirect(
-      new URL(
-        "/payment/success",
-        request.url
-      )
+      `${BASE_URL}/payment/success`,
+      303
     );
 
   } catch (error) {
-
     console.error(
       "Callback Error:",
       error
     );
 
-    return NextResponse.json(
-      {
-        success: false,
-        message:
-          "Internal server error.",
-      },
-      { status: 500 }
+    return NextResponse.redirect(
+      `${BASE_URL}/payment/fail`,
+      303
     );
-
   }
 }
